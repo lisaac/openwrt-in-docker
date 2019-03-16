@@ -28,17 +28,17 @@ modprobe pppoe
 # LAN 口
 docker network create -d macvlan \
     --subnet=10.1.1.0/24 --gateway=10.1.1.1 \
-    --ipv6 --subnet=fe80::/10 --gateway=fe80::1 \
+    --ipv6 --subnet=fe80::/16 --gateway=fe80::1 \
     -o parent=enp3s0 \
     -o macvlan_mode=bridge \
     dMACvLAN
 # WAN 口
 docker network create -d macvlan \
-    --subnet=192.168.1.0/24 --gateway=192.168.1.1 \
-    --ipv6 --subnet=fe80::/10 --gateway=fe80::1 \
+    --subnet=192.168.254.0/24 --gateway=192.168.254.1 \
+    --ipv6 --subnet=fe81::/16 --gateway=fe81::1 \
     -o parent=enp1s0 \
     -o macvlan_mode=bridge \
-    dMACvLAN
+    dMACvWAN
 ```
 # 3. 创建容器
 ```
@@ -48,14 +48,14 @@ docker import https://downloads.openwrt.org/releases/18.06.1/targets/x86/64/open
 #创建并启动容器
 docker run -d \
     --restart unless-stopped \
-    --network dMACvLAN --ip 10.1.1.1 \
+    --network dMACvLAN \
     --privileged \
     --name openwrt \
     openwrt:18.06.2 \
     /sbin/init
 
 #将第二网卡的 macvlan 挂接到 openwrt
-docker network connect --ip 192.168.1.2 dMACvWAN openwrt
+docker network connect dMACvWAN openwrt
 ```
 # 4. 配置 openwrt
 ```
@@ -67,15 +67,13 @@ config interface 'lan'
         option type 'bridge'
         option ifname 'eth0'   # 需要与 docker netwrok 中的虚拟接口匹配（dMACvLAN）
         option proto 'static'
-        option ipaddr '10.1.1.1'   # 配置与 dMACvLAN --ip 地址相同
+        option ipaddr '10.1.1.254'
         option netmask '255.255.255.0'
         option ip6assign '60'
 
 config interface 'wan'
         option ifname 'eth1'  # 需要与 docker netwrok 中的虚拟接口匹配（dMACvWAN）
-        option proto 'static'
-        option ipaddr '192.168.1.2'  # 配置与 dMACvWAN --ip 地址相同
-        option netmask '255.255.255.0'
+        option proto 'dhcp'
         option ip6assign '60'
 
 #重启 openwrt 网络
@@ -91,7 +89,7 @@ ip link add link enp3s0 hMACvLAN type macvlan mode bridge # 在 enp3s0 接口下
 ip addr add 10.1.1.2/24 brd + dev hMACvLAN # 为 hMACvLAN 分配 ip 地址
 ip link set hMACvLAN up
 ip route del default #删除默认路由
-ip route add default via 10.1.1.1 dev hMACvLAN # 设置静态路由
+ip route add default via 10.1.1.254 dev hMACvLAN # 设置静态路由
 echo "nameserver 10.1.1.1" > /etc/resolv.conf # 设置静态 dns 服务器
 
 # 或者使用 nmcli
@@ -104,7 +102,7 @@ auto hMACvLAN
 iface hMACvLAN inet static
   address 10.1.1.2
   netmask 255.255.255.0
-  gateway 10.1.1.1
+  gateway 10.1.1.254
   pre-up ip link add hMACvLAN link enp3s0 type macvlan mode bridge
   post-down ip link del hMACvLAN link enp3s0 type macvlan mode bridge
 ```
