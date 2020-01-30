@@ -99,7 +99,7 @@ nmcli connection add type macvlan dev enp3s0 mode bridge ifname mac30 autoconnec
 或者，若是在 debian 中可以编辑 `/etc/network/interface` 并加入：
 ```
 auto mac30
-iface mac30 inet static
+iface mac30 inet manual
   pre-up ip link add link enp3s0 mac30 type macvlan mode bridge
   pre-up ip addr add 10.1.1.250/24 brd + dev mac30
   up ip link set mac30 up
