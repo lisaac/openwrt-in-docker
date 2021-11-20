@@ -27,7 +27,7 @@ modprobe pppoe
 # 为 docker 创建 macvlan 虚拟接口，并链接到 host 网卡
 # LAN 口
 docker network create -d macvlan \
-    --subnet=10.1.1.0/24 --gateway=10.1.1.1 \
+    --subnet=10.1.1.0/24 --gateway=10.1.1.254 \
     --ipv6 --subnet=fe80::/16 --gateway=fe80::1 \
     -o parent=enp3s0 \
     -o macvlan_mode=bridge \
@@ -105,7 +105,7 @@ iface mac30 inet manual
   up ip link set mac30 up
   post-up ip route del default
   post-up ip route del 10.1.1.0/24 dev enp3s0
-  post-up ip route add default via 10.1.1.1 dev mac30
+  post-up ip route add default via 10.1.1.254 dev mac30
   post-down ip link del dev mac30
 ```
 # 6. 配置客户端 IP&enjoy
